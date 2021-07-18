@@ -12,7 +12,7 @@ public class HelloWorld{
 	@RequestMapping("/")
 	@ResponseBody
 	String home() {
-		return "Hello World";
+		return "Hello World from maste";
 	}
 	
 	public static void main(String[]args) throws Exception {
