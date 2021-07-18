@@ -1,0 +1,122 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - '.github/**'
+    
+    
+env:
+  GITHUB_ACTION_SECURITY_GROUP_ID: ${{ secrets.AWS_GHA_SG_ID }}
+  GITHUB_ACTION_STG_SECURITY_GROUP_ID: ${{ secrets.AWS_GHA_STG_SG_ID }}
+  SG_PROTOCOL: tcp
+  SG_SSH_PORT: 22
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+        
+    - name: Get short version of git commit sha
+      run: |
+        echo "SHORT_SHA=`echo $GITHUB_SHA | cut -c1-8`" >> $GITHUB_ENV
+   
+    - name: Build with Maven
+      id: build-image
+      run: mvn -B package --file pom.xml
+      
+    - name: Build Docker image
+      run: |
+        docker build -t helloworld .
+        
+    - name: Tag image
+      id: tag-image
+      if: ${{ steps.build-image.outcome == 'success' }} 
+      run: |
+        sudo docker tag helloworld ${{ secrets.AWS_ECR }}/helloworld
+        sudo docker tag hellowworld ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
+        sudo docker image ls
+    
+    - name: Configure AWS credentials for ECR
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+    
+    - name: Publish artifact
+      if: ${{ steps.tag-image.outcome == 'success' }}
+      run: |
+        sudo docker login -u AWS -p `aws ecr get-login-password --region ${{ secrets.AWS_REGION }}` ${{ secrets.AWS_ECR }}
+        sudo docker image ls
+        sudo docker push ${{ secrets.AWS_ECR }}/${{ env.SERVICE }}:latest
+        sudo docker push ${{ secrets.AWS_ECR }}/${{ env.SERVICE }}:${{ env.SHORT_SHA }}
+      
+    - name: Logout to Amazon ECR
+      if: always()
+      run: |
+         docker logout ${{ steps.login-ecr.outputs.registry }}
+
+
+  Deploy:
+    name: Deploying application
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+    
+    - name: Get public IP
+      run: |
+         echo "RUNNER_PUBLIC_IP=$(curl https://ipinfo.io/ip)" >> $GITHUB_ENV
+    
+    - name: Get short version of git commit sha
+      run: |
+        echo "SHORT_SHA=`echo $GITHUB_SHA | cut -c1-8`" >> $GITHUB_ENV
+        
+    - name: Configure AWS credentials - github action user
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.GHA_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.GHA_AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+   
+    - name: Authorize access to the public IP of the runner machine
+      run: |
+          aws ec2 authorize-security-group-ingress --group-id $GITHUB_ACTION_SECURITY_GROUP_ID --protocol $SG_PROTOCOL --port $SG_SSH_PORT --cidr ${{ env.RUNNER_PUBLIC_IP }}/32
+ 
+    - name: Deploy the latest artifact to DevInt
+      id: deployment
+      uses: JimCronqvist/action-ssh@master
+      with:
+        hosts: '${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}'
+        privateKey: ${{ secrets.REMOTE_HOST_PRIVATE_KEY }}
+        debug: true
+        command: |
+            sudo docker stop $(sudo docker ps -aq)
+            sudo docker rm $(sudo docker ps -aq)
+            sudo docker system prune -f
+            
+            sudo docker login -u AWS -p `aws ecr get-login-password --region ${{ secrets.AWS_REGION }}` ${{ secrets.AWS_ECR }}
+            sudo docker pull ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
+            sudo docker run -p 8081:8080 --name helloworld_container ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
+            
+    - name: Revoke access to the public IP of the runner machine
+      if: always()
+      run: |
+        aws ec2 revoke-security-group-ingress --group-id $GITHUB_ACTION_SECURITY_GROUP_ID --protocol $SG_PROTOCOL --port $SG_SSH_PORT --cidr ${{ env.RUNNER_PUBLIC_IP }}/32
+        
