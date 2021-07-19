@@ -46,7 +46,7 @@ jobs:
       if: ${{ steps.build-image.outcome == 'success' }} 
       run: |
         sudo docker tag helloworld ${{ secrets.AWS_ECR }}/helloworld
-        sudo docker tag hellowworld ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
+        sudo docker tag helloworld ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
         sudo docker image ls
     
     - name: Configure AWS credentials for ECR
