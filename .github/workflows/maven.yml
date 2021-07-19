@@ -103,7 +103,7 @@ jobs:
       uses: JimCronqvist/action-ssh@master
       with:
         hosts: '${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}'
-        privateKey: ${{ secrets.REMOTE_HOST_PRIVATE_KEY }}
+        privateKey: '${{ secrets.REMOTE_HOST_PRIVATE_KEY }}'
         debug: true
         command: |
             sudo docker stop $(sudo docker ps -aq)
