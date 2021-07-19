@@ -65,8 +65,8 @@ jobs:
       run: |
         sudo docker login -u AWS -p `aws ecr get-login-password --region ${{ secrets.AWS_REGION }}` ${{ secrets.AWS_ECR }}
         sudo docker image ls
-        sudo docker push ${{ secrets.AWS_ECR }}/${{ env.SERVICE }}:latest
-        sudo docker push ${{ secrets.AWS_ECR }}/${{ env.SERVICE }}:${{ env.SHORT_SHA }}
+        sudo docker push ${{ secrets.AWS_ECR }}/helloworld:latest
+        sudo docker push ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
       
     - name: Logout to Amazon ECR
       if: always()
