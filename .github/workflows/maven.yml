@@ -113,8 +113,8 @@ jobs:
             sudo docker pull ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
             sudo docker run -p 8081:8080 --name helloworld_container ${{ secrets.AWS_ECR }}/helloworld:${{ env.SHORT_SHA }}
             
-#    - name: Revoke access to the public IP of the runner machine
-#      if: always()
-#      run: |
-#        aws ec2 revoke-security-group-ingress --group-id $GITHUB_ACTION_SECURITY_GROUP_ID --protocol $SG_PROTOCOL --port $SG_SSH_PORT --cidr ${{ env.RUNNER_PUBLIC_IP }}/32
+    - name: Revoke access to the public IP of the runner machine
+      if: always()
+      run: |
+        aws ec2 revoke-security-group-ingress --group-id $GITHUB_ACTION_SECURITY_GROUP_ID --protocol $SG_PROTOCOL --port $SG_SSH_PORT --cidr ${{ env.RUNNER_PUBLIC_IP }}/32
         
