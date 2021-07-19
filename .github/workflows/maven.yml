@@ -1,4 +1,3 @@
-
 name: Java CI with Maven
 
 on:
@@ -96,17 +95,14 @@ jobs:
       run: |
           aws ec2 authorize-security-group-ingress --group-id $GITHUB_ACTION_SECURITY_GROUP_ID --protocol $SG_PROTOCOL --port $SG_SSH_PORT --cidr ${{ env.RUNNER_PUBLIC_IP }}/32
  
-#   - name: Deploy the latest artifact to DevInt
-#      id: deployment
-#      uses: JimCronqvist/action-ssh@master
-#      with:
-#        hosts: '${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}'
-#        privateKey: ${{ secrets.REMOTE_HOST_PRIVATE_KEY }}
-#        debug: true
-#        command: |
-
-    - name: ssh to machine
-      run: |
+    - name: Deploy the latest artifact to DevInt
+      id: deployment
+      uses: JimCronqvist/action-ssh@master#    
+      with:
+        hosts: '${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}'
+        privateKey: ${{ secrets.REMOTE_HOST_PRIVATE_KEY }}
+        debug: true
+        command: |
             ssh -i ${{ secrets.REMOTE_HOST_PRIVATE_KEY }} ubuntu@54.175.101.58
             sudo docker stop $(sudo docker ps -aq)
             sudo docker rm $(sudo docker ps -aq)
