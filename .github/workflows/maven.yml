@@ -5,7 +5,7 @@ on:
   push:
     branches: [ master ]
  #   paths-ignore:
- #     - '.github/**'
+ #     - '.github/**' 
     
     
 env:
@@ -118,3 +118,4 @@ jobs:
       run: |
         aws ec2 revoke-security-group-ingress --group-id $GITHUB_ACTION_SECURITY_GROUP_ID --protocol $SG_PROTOCOL --port $SG_SSH_PORT --cidr ${{ env.RUNNER_PUBLIC_IP }}/32
         
+#hi
